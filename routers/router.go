@@ -26,7 +26,30 @@ func init() {
 				&controllers.UserController{},
 			),
 		),
+		beego.NSNamespace("/account",
+			beego.NSInclude(
+				&controllers.MemberController{},
+			),
+		),
+	)
+	ns2 := beego.NewNamespace("/v2",
+		beego.NSNamespace("/object",
+			beego.NSInclude(
+				&controllers.ObjectController{},
+			),
+		),
+		beego.NSNamespace("/user",
+			beego.NSInclude(
+				&controllers.UserController{},
+			),
+		),
+		beego.NSNamespace("/account",
+			beego.NSInclude(
+				&controllers.MemberController{},
+			),
+		),
 	)
 	beego.AddNamespace(ns)
+	beego.AddNamespace(ns2)
 	beego.Router("/login", &controllers.AccountController{}, "*:Login")
 }

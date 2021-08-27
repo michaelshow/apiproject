@@ -24,7 +24,8 @@ import (
 	"apiproject/utils"
 	//"github.com/beego/beego/v2/client/orm"
 	"github.com/astaxie/beego/orm"
-	"github.com/beego/beego/v2/core/logs"
+	//"github.com/beego/beego/v2/core/logs"
+	"github.com/astaxie/beego/logs"
 	//"github.com/beego/beego/v2/server/web"
 	"github.com/beego/i18n"
 )
@@ -48,7 +49,7 @@ type Member struct {
 	CreateAt      int             `orm:"type(int);column(create_at)" json:"create_at"`
 	LastLoginTime time.Time       `orm:"type(datetime);column(last_login_time);null" json:"last_login_time"`
 	//i18n
-	Lang string `orm:"-"`
+	Lang string `orm:"-" json:"Lang"`
 }
 
 // TableName 获取对应数据库表名.

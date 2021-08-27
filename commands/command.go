@@ -14,7 +14,8 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/orm"
 	//"github.com/beego/beego/v2/server/web"
-	"github.com/beego/beego/v2/core/logs"
+	//"github.com/beego/beego/v2/core/logs"
+	"github.com/astaxie/beego/logs"
 	_ "github.com/go-sql-driver/mysql"
 	"net/url"
 	"os"
@@ -26,7 +27,9 @@ import (
 // RunCommand 注册orm命令行工具
 func RegisterCommand() {
 
-	if len(os.Args) >= 2 && os.Args[1] == "install" {
+	if len(os.Args) == 1 {
+		ResolveCommand(os.Args[0:])
+	} else if len(os.Args) >= 2 && os.Args[1] == "install" {
 		ResolveCommand(os.Args[2:])
 		Install()
 	} else if len(os.Args) >= 2 && os.Args[1] == "version" {
@@ -64,6 +67,7 @@ func ResolveCommand(args []string) {
 	//	log.Fatal("读取字体文件时出错 -> ", err)
 	//}
 
+	// 不需要手动加载，引入config时init中会根据环境变量自动加载
 	if err := beego.LoadAppConfig("ini", conf.ConfigurationFile); err != nil {
 		log.Fatal("An error occurred:", err)
 	}
