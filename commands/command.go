@@ -4,6 +4,9 @@ import (
 	"apiproject/conf"
 	"apiproject/models"
 	"apiproject/utils/filetil"
+	"log"
+	"net/http"
+
 	//"encoding/gob"
 	"encoding/json"
 	"errors"
@@ -12,16 +15,94 @@ import (
 	"github.com/astaxie/beego/orm"
 	//"github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/beego/i18n"
-	"github.com/lifei6671/gocaptcha"
-	"log"
-	"net/http"
+	_ "github.com/go-sql-driver/mysql"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 )
+
+// RunCommand 注册orm命令行工具
+func RegisterCommand() {
+
+	if len(os.Args) >= 2 && os.Args[1] == "install" {
+		ResolveCommand(os.Args[2:])
+		Install()
+	} else if len(os.Args) >= 2 && os.Args[1] == "version" {
+		//CheckUpdate()
+		os.Exit(0)
+	}
+
+}
+
+//解析命令
+func ResolveCommand(args []string) {
+	//flagSet := flag.NewFlagSet("MinDoc command: ", flag.ExitOnError)
+	//flagSet.StringVar(&conf.ConfigurationFile, "config", "", "MinDoc configuration file.")
+	//flagSet.StringVar(&conf.WorkingDirectory, "dir", "", "MinDoc working directory.")
+	//flagSet.StringVar(&conf.LogFile, "log", "", "MinDoc log file path.")
+	//
+	//if err := flagSet.Parse(args); err != nil {
+	//	log.Fatal("解析命令失败 ->", err)
+	//}
+
+	if conf.WorkingDirectory == "" {
+		if p, err := filepath.Abs(os.Args[0]); err == nil {
+			conf.WorkingDirectory = filepath.Dir(p)
+		}
+	}
+
+	if conf.ConfigurationFile == "" {
+		conf.ConfigurationFile = conf.WorkingDir("conf", "app.conf")
+		config := conf.WorkingDir("conf", "app.conf.example")
+		if !filetil.FileExists(conf.ConfigurationFile) && filetil.FileExists(config) {
+			_ = filetil.CopyFile(conf.ConfigurationFile, config)
+		}
+	}
+	//if err := gocaptcha.ReadFonts(conf.WorkingDir("static", "fonts"), ".ttf"); err != nil {
+	//	log.Fatal("读取字体文件时出错 -> ", err)
+	//}
+
+	if err := beego.LoadAppConfig("ini", conf.ConfigurationFile); err != nil {
+		log.Fatal("An error occurred:", err)
+	}
+	if conf.LogFile == "" {
+		logPath, err := filepath.Abs(beego.AppConfig.DefaultString("log_path", conf.WorkingDir("runtime", "logs")))
+		if err == nil {
+			conf.LogFile = logPath
+		} else {
+			conf.LogFile = conf.WorkingDir("runtime", "logs")
+		}
+	}
+
+	conf.AutoLoadDelay = beego.AppConfig.DefaultInt("config_auto_delay", 0)
+	uploads := conf.WorkingDir("uploads")
+
+	_ = os.MkdirAll(uploads, 0666)
+
+	beego.BConfig.WebConfig.StaticDir["/static"] = filepath.Join(conf.WorkingDirectory, "static")
+	beego.BConfig.WebConfig.StaticDir["/uploads"] = uploads
+	beego.BConfig.WebConfig.ViewsPath = conf.WorkingDir("views")
+	beego.BConfig.WebConfig.Session.SessionCookieSameSite = http.SameSiteDefaultMode
+
+	//fonts := conf.WorkingDir("static", "fonts")
+	//
+	//if !filetil.FileExists(fonts) {
+	//	log.Fatal("Font path not exist.")
+	//}
+	//if err := gocaptcha.ReadFonts(filepath.Join(conf.WorkingDirectory, "static", "fonts"), ".ttf"); err != nil {
+	//	log.Fatal("读取字体失败 ->", err)
+	//}
+
+	RegisterDataBase()
+	//RegisterCache()
+	RegisterModel()
+	RegisterLogger(conf.LogFile)
+
+	//ModifyPassword()
+
+}
 
 // RegisterDataBase 注册数据库
 func RegisterDataBase() {
@@ -81,85 +162,16 @@ func RegisterDataBase() {
 	logs.Info("数据库初始化完成.")
 }
 
-// RunCommand 注册orm命令行工具
-func RegisterCommand() {
-
-	if len(os.Args) >= 2 && os.Args[1] == "install" {
-		ResolveCommand(os.Args[2:])
-		Install()
-	} else if len(os.Args) >= 2 && os.Args[1] == "version" {
-		//CheckUpdate()
-		os.Exit(0)
-	}
-
-}
-
-//解析命令
-func ResolveCommand(args []string) {
-	//flagSet := flag.NewFlagSet("MinDoc command: ", flag.ExitOnError)
-	//flagSet.StringVar(&conf.ConfigurationFile, "config", "", "MinDoc configuration file.")
-	//flagSet.StringVar(&conf.WorkingDirectory, "dir", "", "MinDoc working directory.")
-	//flagSet.StringVar(&conf.LogFile, "log", "", "MinDoc log file path.")
-	//
-	//if err := flagSet.Parse(args); err != nil {
-	//	log.Fatal("解析命令失败 ->", err)
-	//}
-
-	if conf.WorkingDirectory == "" {
-		if p, err := filepath.Abs(os.Args[0]); err == nil {
-			conf.WorkingDirectory = filepath.Dir(p)
-		}
-	}
-
-	if conf.ConfigurationFile == "" {
-		conf.ConfigurationFile = conf.WorkingDir("conf", "app.conf")
-		config := conf.WorkingDir("conf", "app.conf.example")
-		if !filetil.FileExists(conf.ConfigurationFile) && filetil.FileExists(config) {
-			_ = filetil.CopyFile(conf.ConfigurationFile, config)
-		}
-	}
-	if err := gocaptcha.ReadFonts(conf.WorkingDir("static", "fonts"), ".ttf"); err != nil {
-		log.Fatal("读取字体文件时出错 -> ", err)
-	}
-
-	if err := beego.LoadAppConfig("ini", conf.ConfigurationFile); err != nil {
-		log.Fatal("An error occurred:", err)
-	}
-	if conf.LogFile == "" {
-		logPath, err := filepath.Abs(beego.AppConfig.DefaultString("log_path", conf.WorkingDir("runtime", "logs")))
-		if err == nil {
-			conf.LogFile = logPath
-		} else {
-			conf.LogFile = conf.WorkingDir("runtime", "logs")
-		}
-	}
-
-	conf.AutoLoadDelay = beego.AppConfig.DefaultInt("config_auto_delay", 0)
-	uploads := conf.WorkingDir("uploads")
-
-	_ = os.MkdirAll(uploads, 0666)
-
-	beego.BConfig.WebConfig.StaticDir["/static"] = filepath.Join(conf.WorkingDirectory, "static")
-	beego.BConfig.WebConfig.StaticDir["/uploads"] = uploads
-	beego.BConfig.WebConfig.ViewsPath = conf.WorkingDir("views")
-	beego.BConfig.WebConfig.Session.SessionCookieSameSite = http.SameSiteDefaultMode
-
-	fonts := conf.WorkingDir("static", "fonts")
-
-	if !filetil.FileExists(fonts) {
-		log.Fatal("Font path not exist.")
-	}
-	if err := gocaptcha.ReadFonts(filepath.Join(conf.WorkingDirectory, "static", "fonts"), ".ttf"); err != nil {
-		log.Fatal("读取字体失败 ->", err)
-	}
-
-	RegisterDataBase()
-	//RegisterCache()
-	RegisterModel()
-	RegisterLogger(conf.LogFile)
-
-	//ModifyPassword()
-
+// RegisterModel 注册Model
+func RegisterModel() {
+	orm.RegisterModelWithPrefix(conf.GetDatabasePrefix(),
+		new(models.Member),
+		new(models.Option),
+	)
+	//gob.Register(models.Blog{})
+	//gob.Register(models.Document{})
+	//gob.Register(models.Template{})
+	//migrate.RegisterMigration()
 }
 
 // RegisterLogger 注册日志
@@ -236,18 +248,6 @@ func RegisterLogger(log string) {
 	logs.SetLogFuncCall(true)
 }
 
-// RegisterModel 注册Model
-func RegisterModel() {
-	orm.RegisterModelWithPrefix(conf.GetDatabasePrefix(),
-		new(models.Member),
-		new(models.Option),
-	)
-	//gob.Register(models.Blog{})
-	//gob.Register(models.Document{})
-	//gob.Register(models.Template{})
-	//migrate.RegisterMigration()
-}
-
 //系统安装.
 func Install() {
 
@@ -272,11 +272,11 @@ func initialization() {
 		panic(err.Error())
 	}
 
-	lang := beego.AppConfig.String("default_lang")
-	err = i18n.SetMessage(lang, "conf/lang/"+lang+".ini")
-	if err != nil {
-		panic(fmt.Errorf("initialize locale error: %s", err))
-	}
+	//lang := beego.AppConfig.String("default_lang")
+	//err = i18n.SetMessage(lang, "conf/lang/"+lang+".ini")
+	//if err != nil {
+	//	panic(fmt.Errorf("initialize locale error: %s", err))
+	//}
 
 	member, err := models.NewMember().FindByFieldFirst("account", "admin")
 	if errors.Is(err, orm.ErrNoRows) {
